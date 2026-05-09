@@ -1,0 +1,162 @@
+{% extends "courses/base.html" %}
+
+{% block title %}{{ course.title }}{% endblock %}
+
+{% block content %}
+<article class="card">
+    <h2 class="page-title">{{ course.title }}</h2>
+    <p><strong>Type :</strong> {{ course.get_content_type_display }}</p>
+    <p><strong>Niveau :</strong> {{ course.get_level_display }}</p>
+    {% if course.month %}
+        <p><strong>Categorie :</strong> {{ course.month.category.name }}</p>
+        <p><strong>Mois :</strong> {{ course.month.get_month_display }}</p>
+    {% endif %}
+    {% if can_read_pdf %}
+        <p>{{ course.description }}</p>
+    {% else %}
+        <p class="info-text"><strong>Le contenu complet du cours est reserve aux abonnes (mensuel ou annuel).</strong></p>
+        <p class="info-text">
+            Pour vous abonner, retournez a la page d'accueil et choisissez d'abord une categorie puis un mois.
+        </p>
+        <p>
+            <a href="{% url 'home' %}" class="text-link">Aller a l'accueil pour s'abonner</a>
+        </p>
+    {% endif %}
+    {% if course.pdf_file %}
+        {% if can_read_pdf %}
+            <h3>Lecture du cours (PDF)</h3>
+            <div id="pdfjs-status" class="pdf-status">Chargement du document...</div>
+            <div id="pdfjs-container" class="pdf-container">
+            </div>
+            <div id="pdf-fallback" class="pdf-fallback">
+                <iframe
+                    src="{% url 'course_pdf_read' course.slug %}#toolbar=0&navpanes=0&scrollbar=1"
+                    title="Lecture du PDF"
+                    class="pdf-iframe"
+                ></iframe>
+            </div>
+            <p>
+                <a href="{% url 'course_pdf_read' course.slug %}?download=1" class="text-link">Telecharger le PDF du cours</a>
+            </p>
+            <p class="info-text"><small>Le PDF est affiche uniquement en mode lecture dans cette page.</small></p>
+            {% if is_quiz_enabled %}
+                {% with quiz_list=quiz_questions %}
+                    {% if quiz_list %}
+                        <p>
+                            <a href="{% url 'course_quiz' course.slug %}" class="text-link">Passer le quiz de la correction</a>
+                            ({{ quiz_list|length }} question{{ quiz_list|length|pluralize }})
+                        </p>
+                    {% endif %}
+                {% endwith %}
+            {% endif %}
+            {% if monthly_exams and course.month %}
+                <p><strong>Examens mensuels disponibles :</strong></p>
+                <ul class="clean-list">
+                    {% for exam in monthly_exams %}
+                        <li>
+                            <a href="{% url 'monthly_exam' exam.id %}" class="text-link">{{ exam.title }}</a>
+                            ({{ exam.get_total_questions }} question{{ exam.get_total_questions|pluralize }})
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+            <script>
+                (function () {
+                    const pdfUrl = "{% url 'course_pdf_read' course.slug %}";
+                    const status = document.getElementById("pdfjs-status");
+                    const pdfjsContainer = document.getElementById("pdfjs-container");
+                    const fallback = document.getElementById("pdf-fallback");
+
+                    function activateFallback() {
+                        status.style.display = "none";
+                        pdfjsContainer.style.display = "none";
+                        fallback.style.display = "block";
+                    }
+
+                    function renderAllPages(pdfDoc) {
+                        status.textContent = "Document charge. " + pdfDoc.numPages + " pages.";
+                        for (let pageNumber = 1; pageNumber <= pdfDoc.numPages; pageNumber += 1) {
+                            pdfDoc.getPage(pageNumber).then(function (page) {
+                                const viewport = page.getViewport({ scale: 1.25 });
+                                const canvas = document.createElement("canvas");
+                                canvas.className = "pdf-canvas";
+                                canvas.width = viewport.width;
+                                canvas.height = viewport.height;
+                                pdfjsContainer.appendChild(canvas);
+
+                                const context = canvas.getContext("2d");
+                                return page.render({
+                                    canvasContext: context,
+                                    viewport: viewport,
+                                }).promise;
+                            }).catch(function () {
+                                activateFallback();
+                            });
+                        }
+                    }
+
+                    if (!window.pdfjsLib) {
+                        activateFallback();
+                        return;
+                    }
+
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+                    window.pdfjsLib.getDocument(pdfUrl).promise.then(function (loadedPdf) {
+                        renderAllPages(loadedPdf);
+                    }).catch(function () {
+                        activateFallback();
+                    });
+                })();
+            </script>
+        {% else %}
+            <p class="info-text"><strong>Ce contenu PDF est disponible apres abonnement actif.</strong></p>
+            {% if not request.user.is_authenticated %}
+                <p><a href="{% url 'login' %}?next={{ request.path }}" class="text-link">Se connecter</a> pour acceder au PDF.</p>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+</article>
+
+<section class="card">
+    <h3>Programme du cours</h3>
+    {% if can_read_pdf and course.lessons.all %}
+        <ol class="lesson-list">
+            {% for lesson in course.lessons.all %}
+                <li>
+                    <strong>{{ lesson.title }}</strong><br>
+                    {{ lesson.content }}
+                    {% if lesson.video_url %}
+                        <br><a href="{{ lesson.video_url }}" target="_blank" rel="noopener" class="text-link">Voir la video</a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    {% elif not can_read_pdf %}
+        <p>Abonnez-vous pour consulter les lecons de ce cours.</p>
+    {% else %}
+        <p>Aucune lecon disponible.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>S'inscrire au cours</h3>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {{ form.full_name.label_tag }}
+        {{ form.full_name }}
+        {{ form.full_name.errors }}
+        {% if not request.user.is_authenticated %}
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {{ form.email.errors }}
+        {% else %}
+            <p class="info-text"><small>Inscription avec le compte connecte : {{ request.user.email }}</small></p>
+        {% endif %}
+        <button type="submit">S'inscrire</button>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Examen mensuel - {{ month }}{% endblock %}
+
+{% block content %}
+<article class="card">
+    <h2 class="page-title">Quiz : {{ exam.title }}</h2>
+    <p class="info-text">
+        Mois : {{ month }} — Duree : {{ exam.duration_minutes }} min — Note de passage : {{ exam.passing_score }}/20
+    </p>
+
+    {% if finished %}
+        <section class="quiz-result">
+            <h3>Resultat</h3>
+            <p class="quiz-score">Votre score : <strong>{{ score }}</strong> / {{ total }}</p>
+            {% if note_sur_20 >= exam.passing_score %}
+                <p class="info-text">Bravo, vous avez reussi cet examen.</p>
+            {% else %}
+                <p class="info-text">Note insuffisante (minimum requis: {{ exam.passing_score }}/20).</p>
+            {% endif %}
+            {% if details %}
+                <ul class="quiz-detail-list">
+                    {% for row in details %}
+                        <li class="{% if row.correct %}quiz-ok{% else %}quiz-ko{% endif %}">
+                            <p><strong>{{ forloop.counter }}. {{ row.question_text }}</strong></p>
+                            <p>
+                                Votre reponse :
+                                {% if row.selected_labels %}
+                                    {{ row.selected_labels|join:", " }}
+                                {% else %}
+                                    (non repondue ou invalide)
+                                {% endif %}
+                            </p>
+                            {% if not row.correct %}
+                                <p class="info-text">Bonne reponse : {{ row.correct_labels|join:", " }}</p>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <form method="post" class="stack-form" style="margin-top: 1rem;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restart">
+                <button type="submit">Recommencer a zero</button>
+            </form>
+            <p><a href="{% url 'monthly_exam' exam.id %}?restart=1" class="text-link">Si le bouton ne marche pas, cliquez ici</a></p>
+        </section>
+    {% elif not questions %}
+        <p class="info-text">Aucune question disponible pour cet examen.</p>
+    {% else %}
+        <div class="exam-timer-wrap">
+            <p class="info-text">
+                Temps restant :
+                <strong id="exam-timer" class="exam-timer-value">--:--:--</strong>
+            </p>
+        </div>
+        <form method="post" class="stack-form quiz-form" id="monthly-exam-form" autocomplete="off">
+            {% csrf_token %}
+            {% for question in questions %}
+                <fieldset class="quiz-question">
+                    <legend>{{ forloop.counter }}. {{ question.text }}</legend>
+                    {% for option in question.options %}
+                        <label class="quiz-choice">
+                            <input type="checkbox" name="q_{{ forloop.parentloop.counter0 }}" value="{{ forloop.counter0 }}">
+                            <span>
+                                {% if forloop.counter0 == 0 %}a{% elif forloop.counter0 == 1 %}b{% elif forloop.counter0 == 2 %}c{% else %}d{% endif %}) {{ option }}
+                            </span>
+                        </label>
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
+            <button type="submit">Valider et voir mon score</button>
+        </form>
+        <script>
+            (function () {
+                const durationMinutes = Number("{{ exam.duration_minutes|default:0 }}");
+                const timerEl = document.getElementById("exam-timer");
+                const formEl = document.getElementById("monthly-exam-form");
+                if (!timerEl || !formEl || !Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+                    return;
+                }
+
+                let remainingSeconds = Math.floor(durationMinutes * 60);
+                let submittedByTimer = false;
+
+                function pad(value) {
+                    return String(value).padStart(2, "0");
+                }
+
+                function render() {
+                    const hours = Math.floor(remainingSeconds / 3600);
+                    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                    const seconds = remainingSeconds % 60;
+                    timerEl.textContent = pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+                    if (remainingSeconds <= 300) {
+                        timerEl.style.color = "#dc3545";
+                    }
+                }
+
+                render();
+                const timerId = window.setInterval(function () {
+                    remainingSeconds -= 1;
+                    if (remainingSeconds <= 0) {
+                        remainingSeconds = 0;
+                        render();
+                        window.clearInterval(timerId);
+                        if (!submittedByTimer) {
+                            submittedByTimer = true;
+                            formEl.submit();
+                        }
+                        return;
+                    }
+                    render();
+                }, 1000);
+            })();
+        </script>
+    {% endif %}
+</article>
+{% endblock %}

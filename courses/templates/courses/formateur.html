@@ -1,0 +1,486 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Espace Formateur{% endblock %}
+
+{% block content %}
+<style>
+    .status-active { color: green; }
+    .status-inactive { color: red; }
+    .inline-action-form { display: inline; }
+    .action-link { margin-right: 10px; }
+    .action-link-button {
+        margin-right: 10px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        color: blue;
+    }
+    .action-delete-button {
+        color: red;
+        border: none;
+        background: none;
+        cursor: pointer;
+    }
+    .inline-course-action {
+        display: inline;
+        margin-left: 8px;
+    }
+    .upload-regenerate-form {
+        display: inline-block;
+        margin-right: 10px;
+    }
+    .upload-regenerate-input {
+        max-width: 220px;
+        font-size: 12px;
+    }
+</style>
+
+<section class="card">
+    <h2 class="page-title">Espace Formateur</h2>
+    <p class="info-text">Créez vos sujets/corrections par mois, ajoutez des leçons et suivez rapidement vos derniers contenus.</p>
+</section>
+
+<section class="card">
+    <h3>Créer une catégorie</h3>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_category">
+        {{ category_form.non_field_errors }}
+        {{ category_form.name.label_tag }}
+        {{ category_form.name }}
+        {{ category_form.name.errors }}
+        <button type="submit">Créer la catégorie</button>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Créer un mois dans une catégorie</h3>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_month">
+        {{ month_form.non_field_errors }}
+        {{ month_form.category.label_tag }}
+        {{ month_form.category }}
+        {{ month_form.category.errors }}
+        {{ month_form.month.label_tag }}
+        {{ month_form.month }}
+        {{ month_form.month.errors }}
+        <button type="submit">Créer le mois</button>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Créer un sujet ou une correction</h3>
+    <form method="post" enctype="multipart/form-data" class="stack-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_course">
+        {{ course_form.non_field_errors }}
+        {{ course_form.month.label_tag }}
+        {{ course_form.month }}
+        {{ course_form.month.errors }}
+        {{ course_form.content_type.label_tag }}
+        {{ course_form.content_type }}
+        {{ course_form.content_type.errors }}
+        {{ course_form.title.label_tag }}
+        {{ course_form.title }}
+        {{ course_form.title.errors }}
+        {{ course_form.pdf_file.label_tag }}
+        {{ course_form.pdf_file }}
+        {{ course_form.pdf_file.errors }}
+        <hr>
+        <h4>Première leçon du cours</h4>
+        {{ course_lesson_form.non_field_errors }}
+        <p class="info-text">Le titre, la position, le contenu et le lien vidéo de la première leçon sont générés automatiquement.</p>
+        <p class="info-text">Seules les corrections avec PDF sont converties en quiz.</p>
+        <button type="submit">Créer le contenu avec la leçon</button>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Créer un examen mensuel</h3>
+    <form method="post" class="stack-form" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_exam">
+        {{ exam_form.non_field_errors }}
+        {{ exam_form.month.label_tag }}
+        {{ exam_form.month }}
+        {{ exam_form.month.errors }}
+        {{ exam_form.title.label_tag }}
+        {{ exam_form.title }}
+        {{ exam_form.title.errors }}
+        {{ exam_form.description.label_tag }}
+        {{ exam_form.description }}
+        {{ exam_form.description.errors }}
+        {{ exam_form.pdf_file.label_tag }}
+        {{ exam_form.pdf_file }}
+        {{ exam_form.pdf_file.errors }}
+        {{ exam_form.passing_score.label_tag }}
+        {{ exam_form.passing_score }}
+        {{ exam_form.passing_score.errors }}
+        {{ exam_form.duration_minutes.label_tag }}
+        {{ exam_form.duration_minutes }}
+        {{ exam_form.duration_minutes.errors }}
+        {{ exam_form.is_active.label_tag }}
+        {{ exam_form.is_active }}
+        {{ exam_form.is_active.errors }}
+        <button type="submit">Créer l'examen</button>
+    </form>
+</section>
+
+{% if monthly_exams %}
+<section class="card">
+    <h3>Examens mensuels existants</h3>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mois</th>
+                    <th>Titre</th>
+                    <th>Questions</th>
+                    <th>Note passage</th>
+                    <th>Durée</th>
+                    <th>Actif</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exam in monthly_exams %}
+                    <tr>
+                        <td>{{ exam.month }}</td>
+                        <td>{{ exam.title }}</td>
+                        <td>{{ exam.get_total_questions }}</td>
+                        <td>{{ exam.passing_score }}/20</td>
+                        <td>{{ exam.duration_minutes }} min</td>
+                        <td>
+                            {% if exam.is_active %}
+                                <span class="status-active">✓ Actif</span>
+                            {% else %}
+                                <span class="status-inactive">✗ Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'edit_monthly_exam' exam.id %}" class="action-link">Éditer</a>
+                            <form method="post" class="inline-action-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="regenerate_exam_quiz">
+                                <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                <button type="submit" class="action-link-button">Régénérer quiz</button>
+                            </form>
+                            <form method="post" enctype="multipart/form-data" class="upload-regenerate-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="upload_and_regenerate_exam_quiz">
+                                <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                <input type="file" name="exam_pdf_file" accept=".pdf" class="upload-regenerate-input" required>
+                                <button type="submit" class="action-link-button">Uploader PDF + Régénérer</button>
+                            </form>
+                            <form method="post" class="inline-action-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_exam">
+                                <input type="hidden" name="exam_id" value="{{ exam.id }}">
+                                <button type="submit" onclick="return confirm('Supprimer cet examen ?')" class="action-delete-button">Supprimer</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<section class="card">
+    <h3>Abonnements</h3>
+    <p>
+        <a href="{% url 'formateur_subscriptions_export' %}" class="text-link">Télécharger la liste des abonnements (Excel .xlsx)</a>
+    </p>
+    <p class="info-text">
+        Montants calculés à partir des tarifs mensuel / annuel configurés ci-dessous. Les lignes sans tarif affichent « — ».
+        Seuls les abonnements <strong>valides</strong> sont inclus dans le total en bas du tableau et dans l'export Excel.
+        Avant validation, vous pouvez corriger le plan, la catégorie (annuel) et le mois de cours (mensuel). Vous pouvez refuser une demande ou supprimer une ligne.
+    </p>
+    {% if trainer_subscriptions %}
+        {% if trainer_subscriptions|length >= 500 %}
+            <p class="info-text">Affichage des 500 abonnements les plus récents.</p>
+        {% endif %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nom et prénom</th>
+                        <th>Plan</th>
+                        <th>Categorie</th>
+                        <th>Mois</th>
+                        <th>Validé</th>
+                        <th>Montant</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in trainer_subscriptions %}
+                        <tr>
+                            <td>
+                                <strong>
+                                    {% with n=sub.user.last_name p=sub.user.first_name %}
+                                        {% if n or p %}{{ n }}{% if n and p %} {% endif %}{{ p }}{% else %}{{ sub.user.username }}{% endif %}
+                                    {% endwith %}
+                                </strong>
+                            </td>
+                            {% if not sub.trainer_approved and not sub.trainer_rejected and sub.end_at >= now %}
+                                <td>
+                                    <select name="plan" form="approve-sub-{{ sub.id }}" class="table-control" aria-label="Plan">
+                                        <option value="monthly" {% if sub.plan == "monthly" %}selected{% endif %}>Mensuel</option>
+                                        <option value="yearly" {% if sub.plan == "yearly" %}selected{% endif %}>Annuel</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="category_id" form="approve-sub-{{ sub.id }}" class="table-control" aria-label="Catégorie (abonnement annuel)" title="Utilisé pour le plan annuel">
+                                        <option value="">— Catégorie (annuel) —</option>
+                                        {% for cat in trainer_subscription_categories %}
+                                            <option value="{{ cat.id }}" {% if sub.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="month_id" form="approve-sub-{{ sub.id }}" class="table-control" aria-label="Mois de cours (mensuel)" title="Utilisé pour le plan mensuel">
+                                        <option value="">— Mois (mensuel) —</option>
+                                        {% for cm in trainer_subscription_months %}
+                                            <option value="{{ cm.id }}" {% if sub.month_id == cm.id %}selected{% endif %}>{{ cm.category.name }} — {{ cm.get_month_display }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>Non</td>
+                                <td>{% if sub.row_amount is not None %}{{ sub.row_amount }}{% else %}—{% endif %}</td>
+                                <td>
+                                    <div class="subscription-actions">
+                                        <form id="approve-sub-{{ sub.id }}" method="post" class="inline-form subscription-approve-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="approve_subscription">
+                                            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+                                            <button type="submit" class="table-button">Valider</button>
+                                        </form>
+                                        <form method="post" class="inline-form subscription-approve-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="refuse_subscription">
+                                            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+                                        <button type="submit" class="table-button table-button-secondary" onclick="return confirm('Refuser cette demande ?');">Refuser</button>
+                                        </form>
+                                        <form method="post" class="inline-form subscription-approve-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_subscription">
+                                            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+                                            <button type="submit" class="table-button table-button-danger" onclick="return confirm('Supprimer cet abonnement ?');">Supprimer</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            {% else %}
+                                <td>{{ sub.get_plan_display }}</td>
+                                <td>
+                                    {% if sub.plan == "monthly" and sub.month %}
+                                        {{ sub.month.category.name }}
+                                    {% elif sub.plan == "yearly" and sub.category %}
+                                        {{ sub.category.name }}
+                                    {% elif sub.category %}
+                                        {{ sub.category.name }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if sub.plan == "monthly" and sub.month %}
+                                        {{ sub.month.get_month_display }}
+                                    {% elif sub.month %}
+                                        {{ sub.month.get_month_display }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if sub.trainer_approved %}Oui{% elif sub.trainer_rejected %}Refusé{% else %}Non{% endif %}
+                                </td>
+                                <td>{% if sub.row_amount is not None %}{{ sub.row_amount }}{% else %}—{% endif %}</td>
+                                <td>
+                                    <div class="subscription-actions">
+                                        <form method="post" class="inline-form subscription-approve-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_subscription">
+                                            <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+                                            <button type="submit" class="table-button table-button-danger" onclick="return confirm('Supprimer cet abonnement ?');">Supprimer</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">Montant total (abonnements valides, lignes avec tarif)</td>
+                        <td><strong>{{ subscriptions_total }}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    {% else %}
+        <p>Aucun abonnement enregistré.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Inscriptions aux cours</h3>
+    <p class="info-text">Validez chaque inscription pour l'enregistrer avec un montant (par défaut : tarif mensuel configuré ci-dessous, si présent).</p>
+
+    <h4>En attente de validation</h4>
+    {% if pending_enrollments %}
+        <ul class="clean-list">
+            {% for enr in pending_enrollments %}
+                <li>
+                    <strong>{{ enr.full_name }}</strong> ({{ enr.email }}) —
+                    cours « {{ enr.course.title }} »
+                    {% if enr.course.month %}
+                        — {{ enr.course.month.category.name }} / {{ enr.course.month.get_month_display }}
+                    {% else %}
+                        — (cours sans mois)
+                    {% endif %}
+                    — le {{ enr.enrolled_at|date:"d/m/Y H:i" }}
+                    <form method="post" class="stack-form enrollment-validate-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="validate_enrollment">
+                        <input type="hidden" name="enrollment_id" value="{{ enr.id }}">
+                        <label for="amount-{{ enr.id }}">Montant (optionnel)</label>
+                        <input id="amount-{{ enr.id }}" type="text" name="amount" placeholder="{% if default_inscription_amount %}{{ default_inscription_amount }}{% else %}ex. 29.99{% endif %}">
+                        <button type="submit">Valider l'inscription</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucune inscription en attente.</p>
+    {% endif %}
+
+    <h4>Inscriptions validées</h4>
+    {% if validated_enrollments %}
+        <p>
+            <a href="{% url 'formateur_enrollments_export' %}" class="text-link">Télécharger Excel (.xlsx)</a>
+        </p>
+        <ul class="clean-list">
+            {% for enr in validated_enrollments %}
+                <li>
+                    {{ enr.full_name }} —
+                    {% if enr.course.month %}{{ enr.course.month.category.name }} / {{ enr.course.month.get_month_display }}{% else %}-{% endif %}
+                    — montant : {% if enr.amount_paid is not None %}{{ enr.amount_paid }}{% else %}—{% endif %}
+                    {% if enr.validated_at %}— validée le {{ enr.validated_at|date:"d/m/Y H:i" }}{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucune inscription validée pour l'instant.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Classement des examens mensuels (ordre de mérite)</h3>
+    <p class="info-text">
+        Les candidats sont classés du meilleur au moins bon selon la note d'examen sur 20.
+        Pour chaque mois, un candidat garde son dernier résultat enregistré.
+    </p>
+    {% if exam_rankings %}
+        {% for ranking in exam_rankings %}
+            <h4>{{ ranking.month.category.name }} / {{ ranking.month.get_month_display }}</h4>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rang</th>
+                            <th>Nom</th>
+                            <th>Prenom</th>
+                            <th>Note (/20)</th>
+                            <th>Score quiz</th>
+                            <th>Examen</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in ranking.rows %}
+                            <tr>
+                                <td>{{ row.rank }}</td>
+                                <td>{{ row.candidate_last_name }}</td>
+                                <td>{{ row.candidate_first_name }}</td>
+                                <td><strong>{{ row.note_sur_20 }}</strong></td>
+                                <td>{{ row.score }} / {{ row.total }}</td>
+                                <td>{{ row.exam_title }}</td>
+                                <td>{{ row.passed_at|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>Aucun examen mensuel n'a encore été composé.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Configurer les montants d'abonnement</h3>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_subscription_pricing">
+        {{ pricing_form.non_field_errors }}
+        {{ pricing_form.plan.label_tag }}
+        {{ pricing_form.plan }}
+        {{ pricing_form.plan.errors }}
+        {{ pricing_form.amount.label_tag }}
+        {{ pricing_form.amount }}
+        {{ pricing_form.amount.errors }}
+        <button type="submit">Enregistrer le montant</button>
+    </form>
+    {% if pricing_list %}
+        <p class="info-text"><strong>Tarifs actuels :</strong></p>
+        <ul class="clean-list">
+            {% for pricing in pricing_list %}
+                <li>{{ pricing.get_plan_display }} : {{ pricing.amount }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Derniers sujets et corrections</h3>
+    {% if recent_courses %}
+        <ul class="clean-list">
+            {% for course in recent_courses %}
+                <li>
+                    {{ course.title }} ({{ course.get_content_type_display }})
+                    {% if course.month %}
+                        - {{ course.month.category.name }} / {{ course.month.get_month_display }}
+                    {% endif %}
+                    {% if course.quiz_enabled %}
+                        <form method="post" class="inline-form inline-course-action">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="regenerate_course_quiz">
+                            <input type="hidden" name="course_id" value="{{ course.id }}">
+                            <button type="submit" class="table-button table-button-secondary">Régénérer le quiz</button>
+                        </form>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucun sujet/correction pour le moment.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h3>Dernières leçons</h3>
+    {% if recent_lessons %}
+        <ul class="clean-list">
+            {% for lesson in recent_lessons %}
+                <li>{{ lesson.course.title }} - {{ lesson.title }} (position {{ lesson.position }})</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Aucune leçon pour le moment.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Creer un compte{% endblock %}
+
+{% block content %}
+<section class="card auth-card">
+    <h2 class="page-title">Creer un compte</h2>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {{ form.username.label_tag }}
+        {{ form.username }}
+        {{ form.username.errors }}
+        {{ form.email.label_tag }}
+        {{ form.email }}
+        {{ form.email.errors }}
+        {{ form.first_name.label_tag }}
+        {{ form.first_name }}
+        {{ form.first_name.errors }}
+        {{ form.last_name.label_tag }}
+        {{ form.last_name }}
+        {{ form.last_name.errors }}
+        {{ form.password1.label_tag }}
+        {{ form.password1 }}
+        {{ form.password1.errors }}
+        {{ form.password2.label_tag }}
+        {{ form.password2 }}
+        {{ form.password2.errors }}
+        <button type="submit">Creer le compte</button>
+    </form>
+    <p class="info-text">Deja inscrit ? <a href="{% url 'login' %}" class="text-link">Se connecter</a></p>
+</section>
+{% endblock %}

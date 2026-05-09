@@ -1,0 +1,21 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Connexion{% endblock %}
+
+{% block content %}
+<section class="card auth-card">
+    <h2 class="page-title">Connexion</h2>
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {{ form.username.label_tag }}
+        {{ form.username }}
+        {{ form.username.errors }}
+        {{ form.password.label_tag }}
+        {{ form.password }}
+        {{ form.password.errors }}
+        <button type="submit">Se connecter</button>
+    </form>
+    <p class="info-text">Pas encore de compte ? <a href="{% url 'signup' %}" class="text-link">Creer un compte</a></p>
+</section>
+{% endblock %}

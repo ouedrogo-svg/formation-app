@@ -1,0 +1,73 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Quiz — {{ course.title }}{% endblock %}
+
+{% block content %}
+<article class="card">
+    <h2 class="page-title">Quiz : {{ course.title }}</h2>
+    <p><a href="{% url 'course_detail' course.slug %}" class="text-link">Retour au cours</a></p>
+
+    {% if finished %}
+        <section class="quiz-result">
+            <h3>Resultat</h3>
+            <p class="quiz-score">Votre score : <strong>{{ score }}</strong> / {{ total }}</p>
+            <ul class="quiz-detail-list">
+                {% for row in details %}
+                    <li class="{% if row.correct %}quiz-ok{% else %}quiz-ko{% endif %}">
+                        <p><strong>{{ forloop.counter }}. {{ row.question.prompt }}</strong></p>
+                        <p>
+                            Votre reponse :
+                            {% if row.selected_labels %}
+                                {{ row.selected_labels|join:", " }}
+                            {% else %}
+                                (non repondue ou invalide)
+                            {% endif %}
+                        </p>
+                        {% if not row.correct %}
+                            <p class="info-text">
+                                Bonne reponse : {{ row.correct_labels|join:", " }}
+                            </p>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restart">
+                <button type="submit">Recommencer a zero</button>
+            </form>
+            <p><a href="{% url 'course_quiz' course.slug %}?restart=1" class="text-link">Si le bouton ne marche pas, cliquez ici</a></p>
+        </section>
+    {% else %}
+        {% if quiz_locked %}
+            <p class="info-text">
+                Ce quiz est deja valide. Vous devez recommencer a zero pour refaire ce quiz.
+            </p>
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restart">
+                <button type="submit">Recommencer a zero</button>
+            </form>
+            <p><a href="{% url 'course_quiz' course.slug %}?restart=1" class="text-link">Si le bouton ne marche pas, cliquez ici</a></p>
+        {% else %}
+            <form method="post" class="stack-form quiz-form" autocomplete="off">
+                {% csrf_token %}
+                {% for q in questions %}
+                    <fieldset class="quiz-question">
+                        <legend>{{ forloop.counter }}. {{ q.prompt }}</legend>
+                        {% for choice in q.choices %}
+                            <label class="quiz-choice">
+                                <input type="checkbox" name="q_{{ q.pk }}" value="{{ forloop.counter0 }}">
+                                <span>
+                                    {% if forloop.counter0 == 0 %}a{% elif forloop.counter0 == 1 %}b{% elif forloop.counter0 == 2 %}c{% else %}d{% endif %}) {{ choice }}
+                                </span>
+                            </label>
+                        {% endfor %}
+                    </fieldset>
+                {% endfor %}
+                <button type="submit">Valider et voir mon score</button>
+            </form>
+        {% endif %}
+    {% endif %}
+</article>
+{% endblock %}

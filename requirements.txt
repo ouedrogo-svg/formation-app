@@ -1,0 +1,7 @@
+Django>=6.0,<7
+openpyxl>=3.1.0
+pypdf>=4.0,<6
+dj-database-url>=2.2.0
+whitenoise>=6.7.0
+gunicorn>=22.0.0
+psycopg[binary]>=3.2.0

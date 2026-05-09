@@ -1,0 +1,26 @@
+{% extends "admin/index.html" %}
+{% load admin_stats %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'courses/admin.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <p class="label">Cours</p>
+        <p class="value">{% courses_count %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="label">Lecons</p>
+        <p class="value">{% lessons_count %}</p>
+    </div>
+    <div class="stat-card">
+        <p class="label">Inscriptions</p>
+        <p class="value">{% enrollments_count %}</p>
+    </div>
+</div>
+{{ block.super }}
+{% endblock %}

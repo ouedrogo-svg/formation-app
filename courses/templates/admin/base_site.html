@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}Administration E-Learning{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'courses/admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">E-Learning Admin</a>
+</h1>
+{% endblock %}
+
+{% block usertools %}
+{{ block.super }}
+<span class="admin-helper-text">Gestion des cours et inscriptions</span>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

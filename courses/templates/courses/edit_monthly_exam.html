@@ -1,0 +1,263 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Éditer l'examen - {{ exam.month }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Éditer l'examen mensuel</h1>
+    <h2>{{ exam.month.category.name }} - {{ exam.month.get_month_display }}</h2>
+
+    <!-- Paramètres de l'examen -->
+    <section class="card">
+        <h3>Paramètres de l'examen</h3>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_exam_settings">
+            <div class="form-group">
+                <label for="title">Titre de l'examen</label>
+                <input type="text" id="title" name="title" value="{{ exam.title }}" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="3">{{ exam.description }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="pdf_file">Fichier PDF pour générer les questions</label>
+                <input type="file" id="pdf_file" name="pdf_file" accept=".pdf">
+                {% if exam.pdf_file %}
+                    <p style="margin-top: 5px; font-size: 0.9em;">
+                        Fichier actuel: <a href="{{ exam.pdf_file.url }}" target="_blank">{{ exam.pdf_file.name }}</a>
+                    </p>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="passing_score">Note de passage (/20)</label>
+                <input type="number" id="passing_score" name="passing_score" value="{{ exam.passing_score }}" min="0" max="20" required>
+            </div>
+            <div class="form-group">
+                <label for="duration_minutes">Durée (minutes)</label>
+                <input type="number" id="duration_minutes" name="duration_minutes" value="{{ exam.duration_minutes }}" min="1" required>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="is_active" {% if exam.is_active %}checked{% endif %}>
+                    Examen actif
+                </label>
+            </div>
+            <button type="submit">Mettre à jour les paramètres</button>
+        </form>
+    </section>
+
+    <!-- Questions existantes -->
+    {% if exam.questions %}
+    <section class="card">
+        <h3>Questions existantes ({{ exam.questions|length }})</h3>
+        {% for question in exam.questions %}
+            <div class="question-item">
+                <h4>Question {{ forloop.counter }}</h4>
+                <p><strong>{{ question.text }}</strong></p>
+                <ul>
+                    {% for option in question.options %}
+                        <li{% if question.correct_answer == forloop.counter0 or (question.correct_answer|length > 0 and forloop.counter0 in question.correct_answer) %} style="color: green; font-weight: bold;"{% endif %}>
+                            {{ option }}
+                            {% if question.correct_answer == forloop.counter0 or (question.correct_answer|length > 0 and forloop.counter0 in question.correct_answer) %}
+                                ✓
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_question">
+                    <input type="hidden" name="question_index" value="{{ forloop.counter0 }}">
+                    <button type="submit" onclick="return confirm('Supprimer cette question ?')" style="color: red;">Supprimer</button>
+                </form>
+            </div>
+            <hr>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- Ajouter une nouvelle question -->
+    <section class="card">
+        <h3>Ajouter une nouvelle question</h3>
+        <form method="post" id="add-question-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_question">
+            
+            <div class="form-group">
+                <label for="question_text">Texte de la question</label>
+                <textarea id="question_text" name="question_text" rows="3" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="question_type">Type de question</label>
+                <select id="question_type" name="question_type">
+                    <option value="single">Réponse unique</option>
+                    <option value="multiple">Réponses multiples</option>
+                </select>
+            </div>
+            
+            <div id="options-container">
+                <h4>Options de réponse</h4>
+                <div class="option-item" data-index="1">
+                    <input type="text" name="option_1" placeholder="Option 1" required>
+                    <input type="checkbox" name="correct_1" title="Bonne réponse">
+                    <button type="button" onclick="removeOption(this)">Supprimer</button>
+                </div>
+                <div class="option-item" data-index="2">
+                    <input type="text" name="option_2" placeholder="Option 2">
+                    <input type="checkbox" name="correct_2" title="Bonne réponse">
+                    <button type="button" onclick="removeOption(this)">Supprimer</button>
+                </div>
+            </div>
+            
+            <button type="button" onclick="addOption()">Ajouter une option</button>
+            <br><br>
+            <button type="submit">Ajouter la question</button>
+        </form>
+    </section>
+
+    <div style="margin-top: 20px;">
+        <a href="{% url 'formateur' %}" class="btn">Retour à la page formateur</a>
+    </div>
+</div>
+
+<script>
+let optionIndex = 3;
+
+function addOption() {
+    const container = document.getElementById('options-container');
+    const div = document.createElement('div');
+    div.className = 'option-item';
+    div.setAttribute('data-index', optionIndex);
+    div.innerHTML = `
+        <input type="text" name="option_${optionIndex}" placeholder="Option ${optionIndex}" required>
+        <input type="checkbox" name="correct_${optionIndex}" title="Bonne réponse">
+        <button type="button" onclick="removeOption(this)">Supprimer</button>
+    `;
+    container.appendChild(div);
+    optionIndex++;
+}
+
+function removeOption(button) {
+    const optionItem = button.parentElement;
+    const inputs = optionItem.querySelectorAll('input[type="text"]');
+    
+    // Ne pas supprimer si c'est la dernière option
+    const allOptions = document.querySelectorAll('.option-item input[type="text"]');
+    if (allOptions.length <= 2) {
+        alert('Il faut au moins 2 options.');
+        return;
+    }
+    
+    optionItem.remove();
+    
+    // Renuméroter les options restantes
+    const remainingOptions = document.querySelectorAll('.option-item');
+    remainingOptions.forEach((item, index) => {
+        const newIndex = index + 1;
+        item.setAttribute('data-index', newIndex);
+        const textInput = item.querySelector('input[type="text"]');
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        textInput.name = `option_${newIndex}`;
+        textInput.placeholder = `Option ${newIndex}`;
+        checkbox.name = `correct_${newIndex}`;
+    });
+    optionIndex = remainingOptions.length + 1;
+}
+
+// Validation du formulaire
+document.getElementById('add-question-form').addEventListener('submit', function(e) {
+    const questionText = document.getElementById('question_text').value.trim();
+    const options = document.querySelectorAll('.option-item input[type="text"]');
+    const checkedBoxes = document.querySelectorAll('.option-item input[type="checkbox"]:checked');
+    
+    if (!questionText) {
+        alert('Veuillez saisir le texte de la question.');
+        e.preventDefault();
+        return;
+    }
+    
+    let validOptions = 0;
+    options.forEach(option => {
+        if (option.value.trim()) validOptions++;
+    });
+    
+    if (validOptions < 2) {
+        alert('Il faut au moins 2 options.');
+        e.preventDefault();
+        return;
+    }
+    
+    if (checkedBoxes.length === 0) {
+        alert('Veuillez sélectionner au moins une bonne réponse.');
+        e.preventDefault();
+        return;
+    }
+});
+</script>
+
+<style>
+.question-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.question-item h4 {
+    margin-top: 0;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group textarea,
+.form-group select,
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.option-item input[type="text"] {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+</style>
+{% endblock %}

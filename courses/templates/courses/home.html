@@ -1,0 +1,189 @@
+{% extends "courses/base.html" %}
+
+{% block title %}Espace etudiant{% endblock %}
+
+{% block content %}
+<h2 class="page-title">Espace etudiant</h2>
+
+<section class="card">
+    <h3>🔍 Rechercher un cours</h3>
+    <form method="get" action="{% url 'search_courses' %}" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <input 
+            type="text" 
+            name="q" 
+            placeholder="Tapez un mot-clé (titre, description)..."
+            style="flex: 1; min-width: 200px; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;"
+        >
+        <button type="submit" style="padding: 8px 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px;">
+            Rechercher
+        </button>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Explorer les cours</h3>
+    {% if categories %}
+        <p class="info-text">Les cours n'apparaissent qu'apres avoir choisi une categorie puis un mois (pas de liste globale sur cette page).</p>
+        {% if not selected_category %}
+            <p class="info-text">Etape 1 : cliquez sur une categorie.</p>
+        {% elif not selected_month %}
+            <p class="info-text">Etape 2 : cliquez sur un mois pour afficher les cours de ce mois.</p>
+        {% endif %}
+        <h4>Categories</h4>
+        <ul class="clean-list">
+            {% for category in categories %}
+                <li>
+                    <a class="text-link" href="{% url 'home' %}?category={{ category.id }}">{{ category.name }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        {% if selected_category %}
+            <h4>Mois de la categorie : {{ selected_category.name }}</h4>
+            {% if months_for_selected_category %}
+                <ul class="clean-list">
+                    {% for month_item in months_for_selected_category %}
+                        <li>
+                            <a class="text-link" href="{% url 'home' %}?category={{ selected_category.id }}&month={{ month_item.id }}">
+                                {{ month_item.get_month_display }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Aucun mois disponible pour cette categorie.</p>
+            {% endif %}
+        {% endif %}
+
+        {% if selected_month %}
+            <h4>Mois choisi : {{ selected_month.get_month_display }}</h4>
+            {% if not request.user.is_authenticated %}
+            <p class="info-text">
+                    Pour acceder aux sujets et corrections de ce mois, vous devez d'abord vous abonner a ce mois.
+                    <a class="text-link" href="{% url 'login' %}?next={{ request.path }}">Se connecter</a>
+                </p>
+            {% elif request.user.is_staff %}
+                <h4>Sujets disponibles : {{ selected_month.get_month_display }}</h4>
+                {% if subjects_for_selected_month %}
+                    <ul class="clean-list">
+                        {% for month_course in subjects_for_selected_month %}
+                            <li>
+                                <a class="text-link" href="{% url 'course_detail' month_course.slug %}">{{ month_course.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Aucun sujet pour ce mois.</p>
+                {% endif %}
+                <h4>Corrections disponibles : {{ selected_month.get_month_display }}</h4>
+                {% if corrections_for_selected_month %}
+                    <ul class="clean-list">
+                        {% for month_course in corrections_for_selected_month %}
+                            <li>
+                                <a class="text-link" href="{% url 'course_detail' month_course.slug %}">{{ month_course.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Aucune correction pour ce mois.</p>
+                {% endif %}
+                {% if monthly_exams %}
+                    <h4>Examens mensuels</h4>
+                    <ul class="clean-list">
+                        {% for exam in monthly_exams %}
+                            <li>
+                                <a class="text-link" href="{% url 'monthly_exam' exam.id %}">{{ exam.title }}</a>
+                                ({{ exam.get_total_questions }} question{{ exam.get_total_questions|pluralize }})
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% elif selected_month_active_subscription %}
+                <p class="info-text">
+                    Abonnement actif pour ce mois jusqu'au {{ selected_month_active_subscription.end_at|date:"d/m/Y" }}.
+                </p>
+                <h4>Sujets disponibles : {{ selected_month.get_month_display }}</h4>
+                {% if subjects_for_selected_month %}
+                    <ul class="clean-list">
+                        {% for month_course in subjects_for_selected_month %}
+                            <li>
+                                <a class="text-link" href="{% url 'course_detail' month_course.slug %}">{{ month_course.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Aucun sujet pour ce mois.</p>
+                {% endif %}
+                <h4>Corrections disponibles : {{ selected_month.get_month_display }}</h4>
+                {% if corrections_for_selected_month %}
+                    <ul class="clean-list">
+                        {% for month_course in corrections_for_selected_month %}
+                            <li>
+                                <a class="text-link" href="{% url 'course_detail' month_course.slug %}">{{ month_course.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Aucune correction pour ce mois.</p>
+                {% endif %}
+                {% if monthly_exams %}
+                    <h4>Examens mensuels</h4>
+                    <ul class="clean-list">
+                        {% for exam in monthly_exams %}
+                            <li>
+                                <a class="text-link" href="{% url 'monthly_exam' exam.id %}">{{ exam.title }}</a>
+                                ({{ exam.get_total_questions }} question{{ exam.get_total_questions|pluralize }})
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% elif selected_month_pending_subscription %}
+                <p class="info-text">
+                    Votre demande d'abonnement pour ce mois est en attente de validation par le formateur.
+                </p>
+            {% else %}
+                <p class="info-text">Pour acceder aux sujets et corrections de ce mois, vous devez d'abord vous abonner a ce mois.</p>
+                <form method="post" class="stack-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="subscribe_month">
+                    <label for="{{ selected_month_subscription_form.plan.id_for_label }}">Option d'abonnement</label>
+                    {{ selected_month_subscription_form.plan }}
+                    {{ selected_month_subscription_form.plan.errors }}
+                    <p class="info-text">
+                        Montant :
+                        <strong id="home-subscription-amount-value">
+                            -
+                        </strong>
+                    </p>
+                    <button type="submit">Demander l'abonnement a ce mois</button>
+                </form>
+                <script>
+                    (function () {
+                        const select = document.getElementById("{{ selected_month_subscription_form.plan.id_for_label }}");
+                        const amountValue = document.getElementById("home-subscription-amount-value");
+                        const planAmounts = {
+                            "": "-",
+                            monthly: "{% if selected_month_pricing.monthly %}{{ selected_month_pricing.monthly }}{% else %}Non configure{% endif %}",
+                            yearly: "{% if selected_month_pricing.yearly %}{{ selected_month_pricing.yearly }}{% else %}Non configure{% endif %}"
+                        };
+
+                        function updateAmount() {
+                            const selectedPlan = select ? select.value : "";
+                            amountValue.textContent = planAmounts[selectedPlan] || "-";
+                        }
+
+                        if (amountValue) {
+                            updateAmount();
+                        }
+                        if (select) {
+                            select.addEventListener("change", updateAmount);
+                        }
+                    })();
+                </script>
+            {% endif %}
+        {% endif %}
+    {% else %}
+        <p>Aucune categorie avec des contenus pour le moment.</p>
+    {% endif %}
+</section>
+{% endblock %}
