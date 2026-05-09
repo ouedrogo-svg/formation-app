@@ -14,19 +14,36 @@ import os
 from pathlib import Path
 
 import dj_database_url
-from decouple import Config, Csv, RepositoryEnv
+from decouple import Csv, config
+
+
+def _load_env_file(path: Path) -> None:
+    """Charge un fichier .env dans os.environ sans écraser les variables déjà définies (ex. Render)."""
+    if not path.is_file():
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-_env_path = next(
-    (p for p in (BASE_DIR / ".env", BASE_DIR / ".venv" / ".env") if p.is_file()),
-    None,
-)
-if _env_path is not None:
-    config = Config(RepositoryEnv(str(_env_path)))
-else:
-    from decouple import config
+# Ordre : variables système gagnent ; puis .env à la racine ; puis .venv/.env (pratique local).
+for _env in (BASE_DIR / ".env", BASE_DIR / ".venv" / ".env"):
+    _load_env_file(_env)
 
 
 # Quick-start development settings - unsuitable for production
@@ -168,11 +185,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
-]
+_csrf_origins = config("CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins if o.strip()]
 
 # Security settings for production
 SECURE_SSL_REDIRECT = not DEBUG
