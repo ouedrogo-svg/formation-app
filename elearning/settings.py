@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
-from urllib.parse import urlparse
 
 import dj_database_url
 
@@ -32,11 +31,7 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -163,19 +158,6 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
-
-# Render injects the public URL; keep hosts/CSRF in sync if the service name changes.
-_render_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip()
-if _render_url:
-    _host = urlparse(_render_url).hostname
-    if _host and _host not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(_host)
-    _origin = _render_url.rstrip("/")
-    if _origin and _origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(_origin)
-
-if os.environ.get("RENDER"):
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Security settings for production
 SECURE_SSL_REDIRECT = not DEBUG
