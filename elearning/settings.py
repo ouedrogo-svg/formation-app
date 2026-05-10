@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import ast
+import json
 import os
 from pathlib import Path
 
@@ -52,13 +54,41 @@ for _env in (BASE_DIR / ".env", BASE_DIR / ".venv" / ".env"):
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = ''
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=True, cast=bool)
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-_allowed_hosts = config(
-    "ALLOWED_HOSTS",
-    default="localhost,127.0.0.1,quaplus.onrender.com",
-    cast=Csv(),
-)
+
+def _parse_allowed_hosts(value: str) -> list[str]:
+    value = value.strip()
+    if not value:
+        return []
+
+    if value.startswith("[") and value.endswith("]"):
+        try:
+            parsed = ast.literal_eval(value)
+            if isinstance(parsed, (list, tuple)):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        except (ValueError, SyntaxError):
+            pass
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        except (ValueError, json.JSONDecodeError):
+            pass
+
+    return [item.strip() for item in Csv()(value) if item.strip()]
+
+
+_allowed_hosts_raw = os.environ.get("ALLOWED_HOSTS", "")
+if _allowed_hosts_raw.strip().startswith("[") and _allowed_hosts_raw.strip().endswith("]"):
+    _allowed_hosts = _parse_allowed_hosts(_allowed_hosts_raw)
+else:
+    _allowed_hosts = config(
+        "ALLOWED_HOSTS",
+        default="localhost,127.0.0.1,quaplus.onrender.com",
+        cast=Csv(),
+    )
+
 ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts if host.strip()]
 if "quaplus.onrender.com" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("quaplus.onrender.com")
