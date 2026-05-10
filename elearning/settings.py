@@ -54,11 +54,14 @@ SECRET_KEY = ''
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS = config(
+_allowed_hosts = config(
     "ALLOWED_HOSTS",
     default="localhost,127.0.0.1,quaplus.onrender.com",
     cast=Csv(),
 )
+ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts if host.strip()]
+if "quaplus.onrender.com" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("quaplus.onrender.com")
 
 
 # Application definition
