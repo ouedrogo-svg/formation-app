@@ -54,11 +54,11 @@ SECRET_KEY = ''
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=True, cast=bool)
 
-"""ALLOWED_HOSTS = config(
+ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
     default="localhost,127.0.0.1,quaplus.onrender.com",
     cast=Csv(),
-)"""
+)
 
 
 # Application definition
